@@ -1,3 +1,4 @@
+import Database from './db';
 const { ApolloServer, gql } = require("apollo-server-lambda");
 
 const typeDefs = gql`
@@ -14,9 +15,14 @@ const resolvers = {
     }
 };
 
-const server = new ApolloServer({
+exports.handler = async (event, context) => {
+  await Database.connect();
+  const server = new ApolloServer({
     typeDefs,
     resolvers
-});
-
-exports.handler = server.createHandler();
+  });
+  return new Promise((yay, nay) => {
+    const cb = (err, args) => (err ? nay(err) : yay(args));
+    server.createHandler()(event, context, cb);
+  });
+};
