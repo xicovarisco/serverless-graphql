@@ -1,9 +1,8 @@
 import mongoose from 'mongoose';
+require('dotenv').config();
 
 const { dbUser, dbPassword, dbName } = process.env;
 console.log('dbUser', dbUser);
-console.log('dbName', dbName);
-
 const Database = {
     client: null,
     connect: async () => {
