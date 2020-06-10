@@ -1,67 +1,38 @@
 import mongoose from 'mongoose';
-import Database from './db';
-import models from './models';
-const { Schema } = mongoose;
-// const Users = mongoose.model('Users');
-const { ApolloServer, gql } = require("apollo-server-lambda");
+import dotenv from 'dotenv';
+import { ApolloServer, gql } from 'apollo-server-lambda';
+dotenv.config();
 
-let conn = null;
+// Shared connection variable
+let conn;
 const { dbUser, dbPassword, dbName } = process.env;
-const uri = `mongodb+srv://${dbUser}:${dbPassword}@prod-cluster-mhiuv.mongodb.net/${dbName}?retryWrites=true&w=majority`;
 
-// const typeDefs = gql`
-//   type Users {
-//     _id: ID!
-//     email: String
-//   }
-//   type Query {
-//     hello: String
-//     fetchUsers: [Users]
-//   }
-// `;
+const typeDefs = gql`
+  type Users {
+    _id: ID!
+    email: String
+  }
+  type Query {
+    fetchUsers: [Users]
+  }
+`;
 
-// const resolvers = {
-//     Query: {
-//         hello: (parent, args, context) => {
-//             return "Hello, world!";
-//         },
-//         fetchUsers: () => {
-//           console.log('test');
-//             return Users.find();
-//         }
-//     }
-// };
-
-const UserSchema = new Schema({
-  email: String,
-}, { collection: 'users' });
+const resolvers = {
+    Query: {
+        fetchUsers: async () => {
+          const Users = conn.model('users');
+          return Users.find();
+        }
+    }
+};
 
 exports.handler = async (event, context) => {
-  // await Database.connect();
-  // const server = new ApolloServer({
-  //   typeDefs,
-  //   resolvers
-  // });
-  // return new Promise((yay, nay) => {
-  //   const cb = (err, args) => (err ? nay(err) : yay(args));
-  //   server.createHandler()(event, context, cb);
-  // });
-
-
   // Make sure to add this so you can re-use `conn` between function calls.
-  // See https://www.mongodb.com/blog/post/serverless-development-with-nodejs-aws-lambda-mongodb-atlas
   context.callbackWaitsForEmptyEventLoop = false;
-
-  // Because `conn` is in the global scope, Lambda may retain it between
-  // function calls thanks to `callbackWaitsForEmptyEventLoop`.
-  // This means your Lambda function doesn't have to go through the
-  // potentially expensive process of connecting to MongoDB every time.
+  // Creates a connection on the db
   if (conn == null) {
-    console.log('uri', uri);
+    const uri = `mongodb://${encodeURIComponent(dbUser)}:${encodeURIComponent(dbPassword)}@prod-cluster-shard-00-00-mhiuv.mongodb.net:27017,prod-cluster-shard-00-01-mhiuv.mongodb.net:27017,prod-cluster-shard-00-02-mhiuv.mongodb.net:27017/${encodeURIComponent(dbName)}?ssl=true&replicaSet=Prod-Cluster-shard-0&authSource=admin&retryWrites=true&w=majority`;
     conn = mongoose.createConnection(uri, {
-      // Buffering means mongoose will queue up operations if it gets
-      // disconnected from MongoDB and send them when it reconnects.
-      // With serverless, better to fail fast if not connected.
       bufferCommands: false, // Disable mongoose buffering
       bufferMaxEntries: 0 // and MongoDB driver buffering
     });
@@ -69,15 +40,18 @@ exports.handler = async (event, context) => {
     // `await`ing connection after assigning to the `conn` variable
     // to avoid multiple function calls creating new connections
     await conn;
-    // conn.model('Users', new mongoose.Schema({ name: String }));
 
-    conn.model('Users', UserSchema);
+    // Declare all the models and store them agains the connection
+    conn.model('users', new mongoose.Schema({ email: String }));
   }
 
-  const M = conn.model('Users');
-  console.log('M', M);
-  const doc = await M.find();
-  console.log('test', doc);
-
-  return doc;
+  // Creates the Apollo Server
+  const server = new ApolloServer({
+    typeDefs,
+    resolvers
+  });
+  return new Promise((yay, nay) => {
+    const cb = (err, args) => (err ? nay(err) : yay(args));
+    server.createHandler()(event, context, cb);
+  });
 };
