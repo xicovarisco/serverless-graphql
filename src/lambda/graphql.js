@@ -42,6 +42,7 @@ exports.handler = async (event, context) => {
     await conn;
 
     // Declare all the models and store them agains the connection
+    console.log('register schema users');
     conn.model('users', new mongoose.Schema({ email: String }));
   }
 
@@ -52,6 +53,11 @@ exports.handler = async (event, context) => {
   });
   return new Promise((yay, nay) => {
     const cb = (err, args) => (err ? nay(err) : yay(args));
-    server.createHandler()(event, context, cb);
+    server.createHandler({
+      cors: {
+        origin: '*',
+        credentials: true,
+      },
+    })(event, context, cb);
   });
 };
