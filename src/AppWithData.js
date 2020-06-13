@@ -3,12 +3,15 @@ import { gql } from "apollo-boost";
 import { useQuery } from '@apollo/react-hooks';
 
 const AppWithData = () => {
-    const HELLO_WORLD = gql`
+    const FETCH_USERS = gql`
         {
-            hello
+            fetchUsers {
+                _id
+                email
+            }
         }
     `;
-    const { loading, error, data } = useQuery(HELLO_WORLD);
+    const { loading, error, data } = useQuery(FETCH_USERS);
     
     console.log('loading', loading);
     console.log('error', error);
