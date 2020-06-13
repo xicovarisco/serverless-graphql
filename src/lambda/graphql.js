@@ -30,6 +30,7 @@ exports.handler = async (event, context) => {
   // Make sure to add this so you can re-use `conn` between function calls.
   context.callbackWaitsForEmptyEventLoop = false;
   // Creates a connection on the db
+  console.log('conn', conn);
   if (conn == null) {
     const uri = `mongodb://${encodeURIComponent(dbUser)}:${encodeURIComponent(dbPassword)}@prod-cluster-shard-00-00-mhiuv.mongodb.net:27017,prod-cluster-shard-00-01-mhiuv.mongodb.net:27017,prod-cluster-shard-00-02-mhiuv.mongodb.net:27017/${encodeURIComponent(dbName)}?ssl=true&replicaSet=Prod-Cluster-shard-0&authSource=admin&retryWrites=true&w=majority`;
     conn = mongoose.createConnection(uri, {
